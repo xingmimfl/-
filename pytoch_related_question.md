@@ -9,11 +9,10 @@
 #### 多卡训练保存的模型，在保存成pth之后读取出现问题
 ```
     #———保存pth的代码
-    file_name = “modellandmarks_dense_windloss_righteye_ychannel_step1_to_step2_no_fine/
-                    landmarks_dense_windloss_righteye_ychannel_step1_to_step2_no_fine_iter_764800_.model"
+    file_name = "model.pth"
     model = torch.load(file_name)
     model = model.cuda(0)
-    torch.save(model.state_dict(), "landmarks_dense_windloss_righteye_ychannel_step1_to_step2_no_fine_iter_764800_.pth")
+    torch.save(model.state_dict(), "windloss_righteye_ychannel_step1_to_step2_no_fine_iter_764800.pth")
 
     #——读取pth的代码
     eyebrow_model = model.LandmarksModel()
@@ -51,7 +50,6 @@ self.trans_train = Compose([
 ])
 ```
 https://discuss.pytorch.org/t/data-augmentation-for-segmentation-task/18692
-ee
 这里面有一个问题，就是HorizontalFlip， RandomScale，RandomCrop如何应用到segmentation任务中，即这些函数也要对mask image做同样的操作。
 
 https://raw.githubusercontent.com/CoinCheung/BiSeNet/master/transform.py 上面的代码是从这个里面来的，作者是自己实现了一套变换的方法
@@ -378,7 +376,6 @@ if __name__=="__main__":
 ```
 
 #### pytorch 恢复优化器，接着训练
-
 首先保存优化器，同时要注意，scheduler要使用绿框中的方法重载，而不是下面红框中的，否则lr还是config.py里面的初始lr
 
 
@@ -403,7 +400,6 @@ dilation不占用计算量
 一个开源的pytorch的包，里面包含了很多的layer. 在Swin-transformer里面使用了这个库
 
 #### pytorch optimizier初始化的方
-
 来自Swin-transformer， 里面用到了timm这个库。这个里面包含了warm_up这个方法
 
 
@@ -448,15 +444,8 @@ class LabelSmoothingLoss(nn.Module):
         return torch.mean(torch.sum(-true_dist * pred, dim=self.dim))
 ```
 
-#### pytorch做图像放射变换
-- https://www.jianshu.com/p/723af68beb2e
-- https://zhuanlan.zhihu.com/p/349741938
-- https://blog.csdn.net/Jee_King/article/details/107876429
-
-可以直接使用现成的包，比如kornia
-
-https://kornia.readthedocs.io/en/latest/geometry.transform.html?highlight=warp_affine#kornia.geometry.transform.warp_affine
-
-### 已知两组关键点，求转动矩阵
-- http://nghiaho.com/?page_id=671
-- https://math.stackexchange.com/questions/188442/rotation-matrix-for-a-set-of-points
+#### pytorch获得学习率
+```
+optimizer.state_dict()['param_groups'][0]['lr'] #方法1
+optimizer.param_groups[0]['lr'] #方法2
+```
