@@ -1,3 +1,5 @@
+
+
 ### torch.distributed.launch 用法
 #### torch.distributed.launch 参数解析
 	nproc_per_node=N 表示一个节点上有N张显卡
@@ -48,7 +50,39 @@ KKK:     rank:  1  world_size:  4  gpu:  1
 KKK:     rank:  3  world_size:  4  gpu:  3
 ```
 
+### Dataloader and Sampler
+
+```
+train_dataset = datasets.ImageFolder( #----拿到数据
+    traindir,
+    transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize,
+    ])
+)
+
+#----使用Samler采样器
+train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+
+#----dataloader
+train_loader = torch.utils.data.DataLoader(train_dataset,
+                                       batch_size=args.batch_size,
+                                       num_workers=num_worker,
+                                       pin_memory=True,
+                                       sampler=train_sampler)
+```
+假设我们是单机N个GPU，总的batch_size = single_batch_size * N
+1. 使用DistributedSampler, 一个epoch里面只有一份数据集，每次N张卡都拿到single_batch_size数据，每张卡上的数据是不同的
+2. 不使用DistributedSampler, 一个epoch里面有N份数据集，即每张卡都维护自己的一份完整的数据集, 每张卡上的数据可能会存在重复。同时这里需要注意，如果DataLoader里面不使用Sampler,那么上面代码中的batch_size=args.batch_size*N
+
+
 ### problems
+
+#### batch_size和lr的设定
+我们假设这样的场景, 单卡的时候batch_size = single_batch_size, lr=single_lr, 那么我N卡的时候，总的batch_size=single_batch_size*N，lr=sing_lr*N, 那么此时1) dataloader里面的batch_size应该怎么设置? 2) optimizer里面的lr应该怎么设置？
+1) 
 
 
 ### tricks
