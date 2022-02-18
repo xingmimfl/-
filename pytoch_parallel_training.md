@@ -81,8 +81,12 @@ train_loader = torch.utils.data.DataLoader(train_dataset,
 ### problems
 
 #### batch_size和lr的设定
-我们假设这样的场景, 单卡的时候batch_size = single_batch_size, lr=single_lr, 那么我N卡的时候，总的batch_size=single_batch_size*N，lr=sing_lr*N, 那么此时1) dataloader里面的batch_size应该怎么设置? 2) optimizer里面的lr应该怎么设置？
-1) 
+我们假设这样的场景, 单卡的时候batch_size = single_batch_size, lr=single_lr, 那么我N卡的时候，总的batch_size=single_batch_size*N，lr=single_lr*N, 那么此时
+1. dataloader里面的batch_size应该怎么设置? 
+2. optimizer里面的lr应该怎么设置？
+答：
+1. 根据上面的讨论, 在Dataloader里面，如果使用sampler, 那么batch_size=single_batch_size; 如果没有使用sampler, 那么batch_size=single_batch_size * N
+2. optimizer里面的lr和单卡的情况保持一致即可
 
 
 ### tricks
