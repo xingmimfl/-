@@ -4,8 +4,14 @@ import random
 import shutil
 import time
 import warnings
-
 import torch
+
+```外部调用方式
+python -m torch.distributed.launch \
+        --nproc_per_node=N \
+        --use_env \
+        --master_port 1234 train.py
+```
 
 def reduce_mean(tensor, nprocs):
     rt = tensor.clone()
