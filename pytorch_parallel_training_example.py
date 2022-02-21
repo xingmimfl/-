@@ -49,6 +49,13 @@ if __name__=="__main__":
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
+    #----中断之后恢复训练
+    if args.resume:
+        checkpoint = torch.load(os.path.join(path, 'checkpoint_newest.pth'))
+        model.load_state_dict(checkpoint['model'])
+        args.start_epoch = checkpoint['epoch']
+        optimizer.load_state_dict(checkpoint['optimizer'])
+
     #-----loading training dataset----
     train_dataset = datasets.ImageFolder(
         traindir,
