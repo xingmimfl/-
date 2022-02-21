@@ -1,4 +1,15 @@
+### 基本概念
+1. word_size: 总的process的个数
+2. rank: the index of process in the network
+3. local_rank: the index of process on the local machine
 
+假设我们有2个node(机器)， 每个node上面有2张GPU，一共有4个process, 那么
+
+| |   |  |  | |
+|----|----|----|----|----|
+| local_rank | 0 | 1 | 0 | 1 |
+|----|----|----|----|----|
+|rank | 0 | 1 | 2 | 3|
 
 ### torch.distributed.launch 用法
 #### torch.distributed.launch 参数解析
