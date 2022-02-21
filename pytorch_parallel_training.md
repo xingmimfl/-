@@ -1,3 +1,7 @@
+### 参考资料
+1. [detr](https://github.com/facebookresearch/detr)
+2. [pytorch-distributed](https://github.com/tczhangzhi/pytorch-distributed/blob/master/distributed.py)
+
 ### 基本概念
 1. word_size: 总的process的个数
 2. rank: the index of process in the network
