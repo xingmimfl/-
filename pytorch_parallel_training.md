@@ -107,13 +107,16 @@ train_loader = torch.utils.data.DataLoader(train_dataset,
 1. dataloader里面的batch_size应该怎么设置? 
 2. optimizer里面的lr应该怎么设置？
 
-答：
+答:
+
 1. 根据上面的讨论, 在Dataloader里面，如果使用sampler, 那么batch_size=single_batch_size; 如果没有使用sampler, 那么batch_size=single_batch_size * N
 2. optimizer里面的lr和单卡的情况保持一致即可
 
 #### load pretrained model
 如何load pretrained model? 全部的process加载参数还是rank=0的process加载参数即可?
+
 答:
+
 我写过一个程序，使用rank==0的process加载之前训练的参数，发现只有process=0正确加载了参数，其他的process没有加载成功。正确的方法是每一个process都要加载模型参数，但是保存的时候可以只用rank=0的process保存。
 
 ### tricks
