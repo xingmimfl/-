@@ -88,6 +88,13 @@ train_loader = torch.utils.data.DataLoader(train_dataset,
 1. 使用DistributedSampler, 一个epoch里面只有一份数据集，每次N张卡都拿到single_batch_size数据，每张卡上的数据是不同的
 2. 不使用DistributedSampler, 一个epoch里面有N份数据集，即每张卡都维护自己的一份完整的数据集, 每张卡上的数据可能会存在重复。同时这里需要注意，如果DataLoader里面不使用Sampler,那么上面代码中的batch_size=args.batch_size*N
 
+但是一个很重要的地方是需要注意seed的设置方法, [detr](https://github.com/facebookresearch/detr/issues/297)里面提到，给每一个process设置不同的seed, 这样每一个process里面的数据增强变换都是不一样的
+```
+    seed = args.seed + utils.get_rank()
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+```
 
 ### problems
 
