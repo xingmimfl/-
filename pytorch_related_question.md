@@ -397,7 +397,7 @@ dilation不占用计算量
 
 
 #### timm
-一个开源的pytorch的包，里面包含了很多的layer. 在Swin-transformer里面使用了这个库
+一个开源的pytorch的包，里面包含了很多的layer/loss/optimizer. Swin-transformer/Detr/ConvNext里面都用到了这个库 
 
 #### pytorch optimizier初始化的方
 来自Swin-transformer， 里面用到了timm这个库。这个里面包含了warm_up这个方法
@@ -448,4 +448,17 @@ class LabelSmoothingLoss(nn.Module):
 ```
 optimizer.state_dict()['param_groups'][0]['lr'] #方法1
 optimizer.param_groups[0]['lr'] #方法2
+```
+
+#### pytorch通过update_freq字段控制batch_size
+
+这种方法来自[ConvNext](https://github.com/facebookresearch/ConvNeXt), 那么实际的batch_size=batch_size * update_freq
+```
+loss /= update_freq
+loss.backward()
+if (data_iter_step + 1) % update_freq == 0: #--这个地方
+    optimizer.step()
+    optimizer.zero_grad()
+    if model_ema is not None:
+        model_ema.update(model)
 ```
