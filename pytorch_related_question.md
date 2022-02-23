@@ -475,3 +475,17 @@ if (data_iter_step + 1) % update_freq == 0: #--这个地方
     if model_ema is not None:
         model_ema.update(model)
 ```
+
+#### pytorch 余弦退火算法
+pytorch有自带的cosine lr算法
+```
+CosineAnnealingLR(self.optimizer, T_max=conf.epochs, eta_min=1e-6, last_epoch=self.last_epoch)
+CosineAnnealingWarmRestarts
+```
+
+[Swin-Transformer](https://github.com/microsoft/Swin-Transformer)里面使用了timm里面的cosine lr方法，并且带了warm up的功能
+[timm](https://fastai.github.io/timmdocs/SGDR)的功能如下
+```
+num_epoch = 50
+scheduler = CosineLRScheduler(optimizer, t_initial=num_epoch, warmup_t=5, warmup_lr_init=1e-5)
+```
