@@ -12,11 +12,11 @@
     file_name = "model.pth"
     model = torch.load(file_name)
     model = model.cuda(0)
-    torch.save(model.state_dict(), "windloss_righteye_ychannel_step1_to_step2_no_fine_iter_764800.pth")
+    torch.save(model.state_dict(), "xxxxxxx.pth")
 
     #——读取pth的代码
     eyebrow_model = model.LandmarksModel()
-    eyebrow_model.load_state_dict(torch.load("landmarks_dense_windloss_righteye_ychannel_step1_to_step2_no_fine_iter_764800_.pth"))
+    eyebrow_model.load_state_dict(torch.load("xxxxxxx.pth"))
     eyebrow_model.eval()
 ```
 出现的问题
@@ -296,7 +296,7 @@ Normalize
 反变换回来，那么我们可以这么做
 
 <p align="center">
-<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image1.png" width=100% height=100%
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image1.png" width=60% height=60%
 class="center">
 </p>
 
@@ -384,7 +384,7 @@ if __name__=="__main__":
 首先保存优化器，同时要注意，scheduler要使用绿框中的方法重载，而不是下面红框中的，否则lr还是config.py里面的初始lr
 
 <p align="center">
-<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image2.png" width=100% height=100%
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image2.png" width=80% height=80%
 class="center">
 </p>
 
@@ -412,7 +412,7 @@ dilation不占用计算量
 来自Swin-transformer， 里面用到了timm这个库。这个里面包含了warm_up这个方法
 
 <p align="center">
-<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image3.png" width=100% height=100%
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image3.png" width=60% height=60%
 class="center">
 </p>
 
