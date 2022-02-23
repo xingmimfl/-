@@ -488,4 +488,23 @@ CosineAnnealingWarmRestarts
 ```
 num_epoch = 50
 scheduler = CosineLRScheduler(optimizer, t_initial=num_epoch, warmup_t=5, warmup_lr_init=1e-5)
+
+#使用方法如下
+num_epochs = training_epochs
+optimizer = timm.optim.AdamP(my_model.parameters(), lr=0.01)
+scheduler = timm.scheduler.CosineLRScheduler(optimizer, t_initial=training_epochs)
+for epoch in range(num_epochs):
+    num_steps_per_epoch = len(train_dataloader)
+    num_updates = epoch * num_steps_per_epoch
+    for batch in training_dataloader:
+        inputs, targets = batch
+        outputs = model(inputs)
+        loss = loss_function(outputs, targets)
+
+        loss.backward()
+        optimizer.step()
+        scheduler.step_update(num_updates=num_updates) #放在optimizier.step的后面
+        optimizer.zero_grad()
+
+    scheduler.step(epoch + 1) #---这地方也要写
 ```
