@@ -295,6 +295,11 @@ Normalize
 ```
 反变换回来，那么我们可以这么做
 
+<p align="center">
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image1.png" width=100% height=100%
+class="center">
+</p>
+
 #### pytorch中squeeze的问题
 我之前用resnet50,  回归关键点。我把resnet50的最后的fc层改成了nn.Conv2d,   最后的输出是
 ```
@@ -378,6 +383,10 @@ if __name__=="__main__":
 #### pytorch 恢复优化器，接着训练
 首先保存优化器，同时要注意，scheduler要使用绿框中的方法重载，而不是下面红框中的，否则lr还是config.py里面的初始lr
 
+<p align="center">
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image2.png" width=100% height=100%
+class="center">
+</p>
 
 #### 删掉多余的layer
 ```
@@ -402,6 +411,10 @@ dilation不占用计算量
 #### pytorch optimizier初始化的方
 来自Swin-transformer， 里面用到了timm这个库。这个里面包含了warm_up这个方法
 
+<p align="center">
+<img src="https://github.com/xingmimfl/my_notebook/blob/main/images/pytorch_question_images/pytorch_question_image3.png" width=100% height=100%
+class="center">
+</p>
 
 #### Pytorch3d运行错误。
 这个错误是这样的：我在我本地跑程序没有问题，但是在鲁班系统上跑程序一直报错。错误如下
