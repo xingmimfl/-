@@ -484,7 +484,8 @@ CosineAnnealingWarmRestarts
 ```
 
 [Swin-Transformer](https://github.com/microsoft/Swin-Transformer)里面使用了timm里面的cosine lr方法，并且带了warm up的功能
-[timm](https://fastai.github.io/timmdocs/SGDR)的功能如下
+
+[timm optimizer](https://fastai.github.io/timmdocs/SGDR)的功能如下
 ```
 num_epoch = 50
 scheduler = CosineLRScheduler(optimizer, t_initial=num_epoch, warmup_t=5, warmup_lr_init=1e-5)
