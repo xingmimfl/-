@@ -141,4 +141,31 @@ def reduce_mean(tensor, nprocs):
     return rt
 ```
 
+#### optimizer 里面应该传model.parameters()还是应该传ddp_model.parameters()??
+
+在[pytorch-distributed](https://github.com/tczhangzhi/pytorch-distributed/blob/master/distributed.py)、官方[example](https://pytorch.org/tutorials/intermediate/ddp_tutorial.html)
+```
+ddp_model = DDP(model, device_ids=[rank])
+optimizer = optim.SGD(ddp_model.parameters(), lr=0.001)
+```
+
+在[detr](https://github.com/facebookresearch/detr), [ConvNext](https://github.com/facebookresearch/ConvNeXt)里面选择的是ddp_model.module的parameters
+```
+model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+model_without_ddp = model.module
+param_dicts = 
+optimizer = torch.optim.AdamW(
+    param_dicts,
+    lr=args.lr,
+    weight_decay=args.weight_decay
+)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.lr_drop)
+```
+
+在[Swin-Transformer]()里面则是先实现了optimizer,再实现了DDP
+```
+optimizer = build_optimizer(config, model)
+model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[config.LOCAL_RANK], broadcast_buffers=False)
+model_without_ddp = model.module
+```
 
