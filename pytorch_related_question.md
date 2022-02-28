@@ -388,6 +388,39 @@ if __name__=="__main__":
 class="center">
 </p>
 
+注意, pytorch里面自带的lr_scheduler的格式基本是统一的，
+```
+scheduler = CosineAnnealingLR(optimizer, T_max=MAX_EPOCH, eta_min=1e-5, last_epoch=init_epoch)
+schedular = MultiStepLR(optimizer, milestones=milestones, gamma=0.1, last_epoch=last_epoch)
+```
+上面的last_epoch都保证了中断恢复之后lr和中断之前是连续的
+
+相比之下，timm的中断恢复不用显式写出来
+```
+num_epoch = 50
+scheduler = CosineLRScheduler(optimizer, t_initial=num_epoch, warmup_t=5, warmup_lr_init=1e-5)
+
+#使用方法如下
+num_epochs = training_epochs
+optimizer = timm.optim.AdamP(my_model.parameters(), lr=0.01)
+scheduler = timm.scheduler.CosineLRScheduler(optimizer, t_initial=training_epochs)
+for epoch in range(num_epochs):
+    num_steps_per_epoch = len(train_dataloader)
+    num_updates = epoch * num_steps_per_epoch
+    for batch in training_dataloader:
+        inputs, targets = batch
+        outputs = model(inputs)
+        loss = loss_function(outputs, targets)
+
+        loss.backward()
+        optimizer.step()
+        scheduler.step_update(num_updates=num_updates) #放在optimizier.step的后面
+        optimizer.zero_grad()
+
+    scheduler.step(epoch + 1) #---这地方也要写
+```
+step_update和step方法会自动保证中断恢复之后的正确性
+
 #### 删掉多余的layer
 ```
 # create ResNet-50 backbone
@@ -509,3 +542,7 @@ for epoch in range(num_epochs):
 
     scheduler.step(epoch + 1) #---这地方也要写
 ```
+
+#### model EMA 方法
+Swin-Transformer/ConvNext/yolov5里面都用到了model ema这个方法
+
