@@ -489,6 +489,10 @@ class LabelSmoothingLoss(nn.Module):
             true_dist.scatter_(1, target.data.unsqueeze(1), self.confidence)
         return torch.mean(torch.sum(-true_dist * pred, dim=self.dim))
 ```
+timm里面也包含了smooth label的loss函数，如
+```
+from timm.loss import LabelSmoothingCrossEntropy
+```
 
 #### pytorch获得学习率
 ```
@@ -545,4 +549,48 @@ for epoch in range(num_epochs):
 
 #### model EMA 方法
 Swin-Transformer/ConvNext/yolov5里面都用到了model ema这个方法
+timm里面的model ema方法如下(方法来自[convNext](https://github.com/facebookresearch/ConvNeXt))
+```
+from timm.utils import ModelEma
+from timm.utils import get_state_dict
+
+model_ema = None
+if conf.model_ema:
+    # Important to create EMA model after cuda(), DP wrapper, and AMP but before SyncBN and DDP wrapper
+    self.model_ema = ModelEma(
+        self.model,
+        decay=conf.model_ema_decay,
+        device='cpu' if conf.model_ema_force_cpu else '',
+        resume='')
+
+#---during training----
+for e in range(self.last_epoch, epochs):
+    for i, (imgs, labels) in enumerate(iter(self.loader)):
+        #---set status---
+        self.model.train()
+        ....
+        ....
+        #----loss backward----
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        #----update model ema---
+        self.model_ema.update(self.model)
+
+    #---evaluate--
+     evaluate(data_loader_val, self.model_ema.ema)
+
+#----save checkpoints---
+checkpoint = {
+    'epoch': step,
+    'model':self.model.state_dict(),
+    'optimizer':self.optimizer.state_dict(),
+}
+checkpoint['model_ema'] = get_state_dict(self.model_ema)
+torch.save(checkpoint, save_path /(f'checkpoint_newest.pth'))
+
+#---auto load pre checkpoint---
+self.model_ema.ema.load_state_dict(checkpoint_newest['model_ema'])
+```
 
