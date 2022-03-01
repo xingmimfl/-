@@ -103,14 +103,15 @@ train_loader = torch.utils.data.DataLoader(train_dataset,
 ### problems
 
 #### batch_size和lr的设定
-我们假设这样的场景, 单卡的时候batch_size = single_batch_size, lr=single_lr, 那么我N卡的时候，总的batch_size=single_batch_size * N, lr=single_lr*N, 那么此时
+我们假设这样的场景, 单卡的时候batch_size = single_batch_size, lr=single_lr, 那么我N卡的时候，总的batch_size=single_batch_size * N, 那么此时
 1. dataloader里面的batch_size应该怎么设置? 
 2. optimizer里面的lr应该怎么设置？
 
 答:
 
-1. 根据上面的讨论, 在Dataloader里面，如果使用sampler, 那么batch_size=single_batch_size; 如果没有使用sampler, 那么batch_size=single_batch_size * N
-2. optimizer里面的lr和单卡的情况保持一致即可
+1. 根据上面的讨论, 在Dataloader里面，如果使用sampler, 那么batch_size=single_batch_size,(但是模型实际上的batch_size=single_batch_size * N); 如果没有使用sampler, 那么batch_size=single_batch_size * N
+2. optimizer里面的lr和单卡的情况保持一致即可。这是因为,pytorch的DDP模式，lr是针对每一张GPU而言的。
+注意，2中理想情况下是这样的。但是在实际情况中，lr可能需要设置的比singlr_lr更大一些。比如，我训练的一个并行任务，放在四块显卡上面跑，发现lr=3*single_lr, 效果才会和单卡的效果一致
 
 #### load pretrained model
 如何load pretrained model? 全部的process加载参数还是rank=0的process加载参数即可?
@@ -140,6 +141,12 @@ def reduce_mean(tensor, nprocs):
     rt /= nprocs
     return rt
 ```
+但是要注意，reduce_mean, 一般都要放在
+```
+torch.distributed.barrier() 或者
+torch.cuda.synchronize()
+```
+的后面
 
 #### optimizer 里面应该传model.parameters()还是应该传ddp_model.parameters()??
 
@@ -153,7 +160,7 @@ optimizer = optim.SGD(ddp_model.parameters(), lr=0.001)
 ```
 model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
 model_without_ddp = model.module
-param_dicts = 
+param_dicts = parameters from model_without_ddp
 optimizer = torch.optim.AdamW(
     param_dicts,
     lr=args.lr,
@@ -168,4 +175,19 @@ optimizer = build_optimizer(config, model)
 model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[config.LOCAL_RANK], broadcast_buffers=False)
 model_without_ddp = model.module
 ```
+我的一个使用经验是不论传model.parameters()还是ddp_model.parameters()训练效果没有影响
 
+#### SyncBatchNorm用法
+看了一下，Swin-Transformer/detr/ConvNext里面都没有用到SyncBatchNorm(Swin-Transformer和ConvNext里面是模型结构里面不含有BatchNorm, detr里面其实是把BatchNorm给Freeze了)
+yolov5里面用到了SyncBatchNorm, 另外github上有一个比较好的[pytorch-sync-batchnorm-example](https://github.com/dougsouza/pytorch-sync-batchnorm-example)
+```
+net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
+device = torch.device('cuda:{}'.format(args.local_rank))
+net = net.to(device)
+net = torch.nn.parallel.DistributedDataParallel(
+    net,
+    device_ids=[args.local_rank],
+    output_device=args.local_rank,
+)
+
+```
