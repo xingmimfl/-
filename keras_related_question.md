@@ -49,18 +49,16 @@ keras有三个可以用来训练的函数：
 如果想要自己写dataset, 那么需要使用后面两种方法
 train_on_batch 
 在tensorflow2.3中，fit_generator已经设置成了deprecated
-https://github.com/rstudio/keras/issues/1104
-https://keras.io/api/models/model_training_apis/
-https://stackoverflow.com/questions/49100556/what-is-the-use-of-train-on-batch-in-keras
-https://blog.csdn.net/baoxin1100/article/details/107917633 这个需要看下,介绍了fit_generator和train_on_batch
-https://github.com/jacobgil/keras-dcgan/blob/master/dcgan.py train_on_batch的使用方法
+[doc1](https://github.com/rstudio/keras/issues/1104)/[doc2](https://keras.io/api/models/model_training_apis/)/[doc3](https://stackoverflow.com/questions/49100556/what-is-the-use-of-train-on-batch-in-keras)/[doc4](https://blog.csdn.net/baoxin1100/article/details/107917633)/[dcgan](https://github.com/jacobgil/keras-dcgan/blob/master/dcgan.py)这些需要看下,介绍了fit_generator和train_on_batch
 
 如果使用fit_generator的方法
-```python
+```
 landmarks_model.fit_generator(face_dataset.generate_data(), steps_per_epoch=steps,epochs=20)
+```
 
 ### keras GradientTape方法
 上面提到的fit/fit_generator/train_on_batch的方法，训练过程都是不可见的。但是在真正的工作中，我们往往需要自己进行精细化的控制，这个时候就推荐使用GradientTape方法，可以显示写出来训练过程，如下
+
 ```
 for  i in range(MAX_EPOCH):  #---epoch
     epoch_time = time.time()
