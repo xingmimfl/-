@@ -37,8 +37,9 @@ tf.keras.backend.squeeze(out, axis=1)
 out = keras.backend.concatenate([out, classify_out], axis=1)
 ```
 
-### keras.model
-```python
+### keras 打印tensor的值
+```
+Tensorflow.keras.backend.get_value(tensor)
 ```
 
 ### keras fit/fit_generator/train_on_batch
@@ -137,7 +138,7 @@ for i_batch, sample_batched in enumerate(face_dataset.generate_data()):
     print("pts_data.shape:\t", pts_data.shape
 ```
 
-II) 我们可以使用pytorch里面的dataloader的方法，这样做的好处是一方面我们很多模型可能是pytorch写的，数据增强都是都是先写好的，另外一方面pytorch也提供了很多优秀的数据增强的方法
+II) 我们可以使用pytorch里面的dataloader的方法，这样做的好处是一方面我们很多模型可能是pytorch写的，数据增强都是都是先写好的，另外一方面pytorch也提供了很多优秀的数据增强的方法。在我们的实践中，我们一直是在使用这种方法
 ```
 def train():
     for i,(inputs, label) in enumerate(train_loader):
@@ -194,4 +195,58 @@ for epoch in range(100):
 上面存在一个问题，就是如果我对不同的layer设定了不同的学习率的变化方式，那么set_value这种方法如何改变？？？
 
 ### 构建keras model的方法
-这个地方有很多可以说的, keras里面有很多创建model的方法
+这个地方有很多可以说的, keras里面有很多创建model的方法, 
+I)方法1，[doc1](https://keras.io/examples/vision/image_classification_from_scratch/)使用x经过不同的layer不断往后迭代
+```
+def make_model(input_shape, num_classes):
+    inputs = keras.Input(shape=input_shape)
+    # Image augmentation block
+    x = data_augmentation(inputs)
+
+    # Entry block
+    x = layers.Rescaling(1.0 / 255)(x)
+    x = layers.Conv2D(32, 3, strides=2, padding="same")(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+
+    x = layers.Conv2D(64, 3, padding="same")(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
+    ...
+    ...
+    outputs = layers.Dense(units, activation=activation)(x)
+    return keras.Model(inputs, outputs)
+```
+
+II)方法2,[doc2](https://keras.io/examples/vision/mnist_convnet/)使用keras.squential的方法进行定义model
+```
+model = keras.Sequential(
+    [
+        keras.Input(shape=input_shape),
+        layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+        layers.MaxPooling2D(pool_size=(2, 2)),
+        layers.Flatten(),
+        layers.Dropout(0.5),
+        layers.Dense(num_classes, activation="softmax"),
+    ]
+)
+```
+
+III)方法3, 使用keras.Model类的方法建立，如下
+```
+import tensorflow as tf
+class MyModel(tf.keras.Model):
+  def __init__(self):
+    super(MyModel, self).__init__()
+    self.dense1 = tf.keras.layers.Dense(4, activation=tf.nn.relu)
+    self.dense2 = tf.keras.layers.Dense(5, activation=tf.nn.softmax)
+
+  def call(self, inputs):
+    x = self.dense1(inputs)
+    return self.dense2(x)
+model = MyModel()
+```
+在实践中，我们采用方法3的方法，原因是我们发现方法1、方法2不太好操控，比如我们如果想要冻结一些参数、拉多个分支进行训练等等, 用3比较适合。下面我们详细讨论第三种方法
+
