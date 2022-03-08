@@ -71,7 +71,7 @@ for  i in range(MAX_EPOCH):  #---epoch
             pts_data = pts_data.numpy().astype(np.float32)
 
             landmarks_out = landmarks_model(image_data)
-            loss = wing_loss(landmarks_out, pts_data) #---loss
+            loss = wing_loss(landmarks_out, pts_data) #---这里的loss是我们自定义的
             mae = calc_accuracy(landmarks_out, pts_data)
 
         grads = tape.gradient(loss, landmarks_model.trainable_weights)
@@ -98,6 +98,9 @@ for  i in range(MAX_EPOCH):
     epoch_time = time.time()
     for i_batch, sample_batched in enumerate(train_loader):
         with tf.GradientTape() as tape:
+            ...
+            ...
+            loss =wing_loss(input, label) #---这个地方使用自定义的loss函数
             ...
             ...
 ```
@@ -140,6 +143,9 @@ for i_batch, sample_batched in enumerate(face_dataset.generate_data()):
 
 II) 我们可以使用pytorch里面的dataloader的方法，这样做的好处是一方面我们很多模型可能是pytorch写的，数据增强都是都是先写好的，另外一方面pytorch也提供了很多优秀的数据增强的方法。在我们的实践中，我们一直是在使用这种方法
 ```
+train_loader = torch.utils.data.DataLoader(train_set, batch_size=BATCH_SIZE, collate_fn=collate_fn,
+                                      shuffle=True, num_workers=NUM_WORKERS, pin_memory=False)
+...
 def train():
     for i,(inputs, label) in enumerate(train_loader):
         #如果 inputs 和 label 是 torch Tensor
@@ -171,7 +177,7 @@ model.fit_generator(train_generator,
 但是对于train_on_batch或者GradientTape方法，我们可以自己定义学习率的变化
 multiStep
 ```
-mport keras.backend as K
+import keras.backend as K
 for epoch in range(100):
     train()
     evaluate()
@@ -193,6 +199,75 @@ for epoch in range(100):
     K.set_value(landmarks_model.optimizer.lr, lr) # 设置学习率
 ```
 上面存在一个问题，就是如果我对不同的layer设定了不同的学习率的变化方式，那么set_value这种方法如何改变？？？
+
+### keras 自己写layer
+
+针对小模型的设计，一个通用的方法是，大家共同维护一套基本的layer, 然后用这些layer组建不同的模型。打一个比方，我们写一个自己的AveragePool layer
+```
+class AvgPool(keras.layers.Layer):
+    def __init__(self,kernel_size,stride=None,padding="valid",ceil_model=False, count_include_pad=True, **kwargs):
+        super(AvgPool, self).__init__(**kwargs)
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.padding = padding
+        self.ceil_model = ceil_model
+        self.count_include_pad = count_include_pad
+
+        self.avgpool = keras.layers.AveragePooling2D(
+                pool_size=self.kernel_size, strides=self.stride, padding=self.padding, data_format=None
+            )
+
+    def call(self, x, **kwargs):
+        out = self.avgpool(x)
+        return out
+
+    def get_config(self):
+        config = super().get_config().copy()
+        config.update({
+            'kernel_size': self.kernel_size,
+            'stride': self.stride,
+            'padding': self.padding,
+            'ceil_model': self.ceil_model,
+            'count_include_pad': self.count_include_pad,
+            'avgpool':self.avgpool,
+        })
+        return config
+```
+这里我们首先要继承keras.layers.Layer这个方法。这个有一个函数叫做get_config(), 如果没有这个函数的话,那么保存模型参数h5之后再读取这个h5的时候就会报一些错误
+对应的,模型读取pretrained_model的时候要这么做
+```
+    custom_objects_dicts={
+            'conv_layer_no_group': conv_layer_no_group,
+            'mobile_unit':mobile_unit,
+            'AvgPool':AvgPool,
+            ...
+            ...
+            "AvgQuant":AvgQuant,
+            "Cat":Cat,
+            "conv_layer":conv_layer,
+            "mse_loss":mse_loss
+        }
+    pretrained_model_path = "20211223_version14_finetune_iter_3_train_i_batch_0_.h5"
+    landmark_model.load_weights(pretrained_model_path, by_name=True)
+```
+上面的conv_layer_no_group等等就是我们自己定义的layer
+这里需要注意，我们自定义layer的时候，里面可能会包含多种torch.nn里面的layer,比如conv/ReLU等等各种layer
+
+### keras load_weights by_name/add name to layer
+我们可以给构建keras model的layer添加上名字，如下
+```
+self.down_conv1_1 = mobile_unit(channel_in, channel_in, 2, name = "layer1")
+self.down_conv1_2 = mobile_unit(channel_in, channel_in, name = "layer2")
+self.down_conv1_3 = mobile_unit(channel_in, channel_in, name = "layer3")
+```
+这样做的好处有：
+- 在之后的处理中，我们可以根据layer的名字对layer做相应的处理，比如说固定layer参数. if 'classify' in layer.name: layer.trainable=False
+- 如果我们把当前模型当做一个raw的模型，训练好了这个模型。之后出于其他的目的，我们在原来的模型结构上面增加了很多的其他的layer, 那么我们读取pretrained model parameters的时候，就可以通过
+```
+pretrained_model_path = "20211223_version14_finetune_iter_3_train_i_batch_0_.h5"
+model.load_weights(pretrained_model_path, by_name=True)
+```
+这种方法把原先的参数读进来
 
 ### 构建keras model的方法
 这个地方有很多可以说的, keras里面有很多创建model的方法, 
@@ -250,3 +325,15 @@ model = MyModel()
 ```
 在实践中，我们采用方法3的方法，原因是我们发现方法1、方法2不太好操控，比如我们如果想要冻结一些参数、拉多个分支进行训练等等, 用3比较适合。下面我们详细讨论第三种方法
 
+### keras构建自己的layer和model
+我先讲下我们在实践中总结的方法
+- 自己写的layer继承keras.layers.Layer这个类，模型继承keras.Model这个类
+- 在model.py里面，各个layer尽量散开放, 不要把layer集成到一个稍大一些的模块里面
+
+
+
+
+### keras 固定参数/batchNorm参数
+固定参数来自多个方面的需求，比如我们想要finetune的时候固定住前面几个layer的系数，或者说我们想要固定住主branch的参数，然后从这个branch上面拉小分支出来，只训练这个分支，但是同时又希望主branch的参数保持不变。
+接下来我们如何固定??
+我们可以选取这个layer,然后
