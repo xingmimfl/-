@@ -4,6 +4,8 @@
 - https://github.com/eriklindernoren/Keras-GAN
 - https://github.com/qubvel/segmentation_models
 
+keras是一个极其灵活的框架，我在这里提到的仅仅是我在实践中碰到的问题和解决方法，不是唯一标准的做法。
+
 ### keras.conv2D没有groups
 keras=2.3.1之前没有这个参数。
 	
@@ -330,10 +332,52 @@ model = MyModel()
 - 自己写的layer继承keras.layers.Layer这个类，模型继承keras.Model这个类
 - 在model.py里面，各个layer尽量散开放, 不要把layer集成到一个稍大一些的模块里面
 
-
-
-
 ### keras 固定参数/batchNorm参数
-固定参数来自多个方面的需求，比如我们想要finetune的时候固定住前面几个layer的系数，或者说我们想要固定住主branch的参数，然后从这个branch上面拉小分支出来，只训练这个分支，但是同时又希望主branch的参数保持不变。
-接下来我们如何固定??
-我们可以选取这个layer,然后
+I) 固定参数来自多个方面的需求，比如我们想要finetune的时候固定住前面几个layer的系数，或者说我们想要固定住主branch的参数，然后从这个branch上面拉小分支出来，只训练这个分支，但是同时又希望主branch的参数保持不变。
+那么我们如何固定参数??
+下面是一个读取模型pretrained model, 并且把名称里面不含有classify的layer参数固定住的示范
+```
+#----trained old model path model-----
+classify_model_path = "xxx.h5"
+model = model_file.LandmarksModel()
+input_shape = (batch_size, input_size, input_size, channel)
+input = np.random.random(input_shape)
+output = model(input)
+model.load_weights(classify_model_path, by_name=True)
+for layer in model.layers:
+    if 'classify' in layer.name: continue
+    layer.trainable = False
+```
+II) BatchNorm参数的固定。
+BatchNorm是一个极其特殊的layer, 在pytorch里面，requires_grad=False是无法固定住batchNorm的参数的。一般都需要采用下面的方式才能固定
+
+
+在keras里面,最开始batchnorm也需要类似pytorch上面的方法进行固定。但是[ref](https://github.com/keras-team/keras/issues/7085)提到, 经过更新trainable=False也对batchNorm起作用了。
+
+
+### keras 固定主分支训练小分支参数加载
+
+如上所述，有时候我们可以这么搞，我们先训练一个模型，并且称这个模型是主分支。训练好之后，我们从这个模型的某一个layer上面拉去一个小分支，然后再训练这个小分支，我们希望能够复用主分支已经训练好的feature, 即加载原来的主分支的参数，同时保证训练小分支的时候，主分支的参数不变
+
+
+
+### keras如何复制参数
+
+一些情况下，我可能需要把model1的某个layer的系数复制到model2的某一个layer里面，这个时候可以使用
+```
+set_weights()
+get_weights()
+```
+比如我们将model1的第零个layer的参数复制给model2的第一个layer
+```
+model2.layers[1].set_weights(model1.layers[0].get_weights())
+```
+如果model1的第零个layer是一个sequential结构，可以这么搞
+```
+model2.layers[1].set_weights(model1.layers[0].layers[0].get_weights())
+```
+我自己这种复制方法把一个包含有sequential结构的model里面的layer都拆出来了，参数就直接复制到新的model对应的结构上
+
+
+### keras 
+
