@@ -14,7 +14,8 @@ TypeError: ('Keyword argument not understood:', 'groups')
 ```
 解决方法，升级keras版本，或者使用其他的卷积核操作。
 
-### Keras动态reshape
+### keras tensor操作
+#### Keras动态reshape
 ```python
 class Reorg(keras.layers.Layer):
     def __init__(self, **kwargs):
@@ -34,12 +35,12 @@ class Reorg(keras.layers.Layer):
 tf.keras.backend.squeeze(out, axis=1)
 ```
 
-### keras concatenate方法
+#### keras concatenate方法
 ```
 out = keras.backend.concatenate([out, classify_out], axis=1)
 ```
 
-### keras 打印tensor的值
+#### keras 打印tensor的值
 ```
 Tensorflow.keras.backend.get_value(tensor)
 ```
@@ -325,7 +326,8 @@ class MyModel(tf.keras.Model):
     return self.dense2(x)
 model = MyModel()
 ```
-在实践中，我们采用方法3的方法，原因是我们发现方法1、方法2不太好操控，比如我们如果想要冻结一些参数、拉多个分支进行训练等等, 用3比较适合。下面我们详细讨论第三种方法
+在实践中，我们采用方法3的方法，原因是我们发现方法1、方法2不太好操控，比如我们如果想要冻结一些参数、拉多个分支进行训练等等, 用3比较适合。这是因为keras.Sequential的方法无法返回来多个值(一个方法是我们可以把连个result concate在一起然后一起回传，但是总感觉怪怪的)
+下面我们详细讨论第三种方法
 
 ### keras构建自己的layer和model
 我先讲下我们在实践中总结的方法
@@ -352,13 +354,82 @@ II) BatchNorm参数的固定。
 BatchNorm是一个极其特殊的layer, 在pytorch里面，requires_grad=False是无法固定住batchNorm的参数的。一般都需要采用下面的方式才能固定
 
 
-在keras里面,最开始batchnorm也需要类似pytorch上面的方法进行固定。但是[ref](https://github.com/keras-team/keras/issues/7085)提到, 经过更新trainable=False也对batchNorm起作用了。
+在keras里面,最开始batchnorm也需要类似pytorch上面的方法进行固定。但是[ref](https://github.com/keras-team/keras/issues/7085)提到, 经过更新layer.trainable=False也对batchNorm起作用了。
+还有另外一种固定keras里面BatchNorm参数的方法, 可以给bn层传一个参数来控制
+```
+keras.layers.BatchNormalization(trainable=False)
+```
+实际中我们这边固定bn的方法使用了第二种方法，第一种我试验过，但是最后放弃了。
 
 
 ### keras 固定主分支训练小分支参数加载
 
-如上所述，有时候我们可以这么搞，我们先训练一个模型，并且称这个模型是主分支。训练好之后，我们从这个模型的某一个layer上面拉去一个小分支，然后再训练这个小分支，我们希望能够复用主分支已经训练好的feature, 即加载原来的主分支的参数，同时保证训练小分支的时候，主分支的参数不变
+如上所述，有时候我们可以这么搞，我们先训练一个模型，并且称这个模型是主分支。训练好之后，我们从这个模型的某一个layer上面拉去一个小分支，然后再训练这个小分支，我们希望能够复用主分支已经训练好的feature, 即加载原来的主分支的参数，同时保证训练小分支的时候，主分支的参数不变。那么我们如果加载主分支的参数呢?
+一个例子如下
+```
+class ExamModel(keras.Model):
+    def __init__(self):
+        super(LandmarksModel, self).__init__()
+        self._preprocess_layer =  keras.layers.InputLayer(input_shape=(input_size, input_size, 1))
+        self.layer1 = layer1(..., bn_trainable=True, name = "layer1")
+        self.layer2 = layer2(..., bn_trainable=True, name = "layer2")
+        self.layer3 = layer3(..., bn_trainable=True, name = "layer3")
 
+    def call(self, x):
+        x = self._preprocess_layer(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        output = self.layer3(x)
+        return output
+```
+我们用上面的模型训练了一个任务。上面的layer1/layer2/layer3都是我们自定义的layer, 本身就是多种conv/bn/relu的组合。
+我们保存模型的时候，正常保存(为了之后可以在这个模型上面接着训练)
+```
+model.save_weights("model_example.h5")
+```
+然后我们单独写一个脚本读取这个h5,然后freeze参数值
+```
+model = ExamModel()
+....
+model.load_weights("model_example.h5", by_name=True)
+for layer in model.layers:
+    if 'classify' in layer.name: continue
+    layer.trainable = False #固定参数
+
+model.save_weights("model_example_frozen_params.h5")
+```
+
+然后我们增加了一个小分支，训练这个小分支, 改动如下
+```
+class ExamModelwithBranch(keras.Model):
+    def __init__(self):
+        super(LandmarksModel, self).__init__()
+        self._preprocess_layer =  keras.layers.InputLayer(input_shape=(input_size, input_size, 1))
+        self.layer1 = layer1(..., bn_trainable=False, name = "layer1") #---设为False, 让bn参数不参加训练
+        self.layer2 = layer2(..., bn_trainable=False, name = "layer2")
+        self.layer3 = layer3(..., bn_trainable=False, name = "layer3")
+        self.classify_layer = layer4(..., bn_trainable=True, name = "classify_layer4")
+
+    def call(self, x):
+        x = self._preprocess_layer(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        output = self.layer3(x)
+        classify_out = self.classify_layer(x)
+        return output, classify_out
+```
+读取pretraeined params代码如下
+```
+model = ExamModelwithBranch()
+...
+#---#把除了classify分支其他的layer系数都固定住, 这样我们才能加载上面model_example_frozen_params.h5的模型参数---
+for layer in landmark_model.layers:
+    if "classify" in layer.name: continue #classify分支需要训练
+    layer.trainable=False
+model.load_weights("model_example_frozen_params.h5", by_name=True)
+
+train()
+```
 
 
 ### keras如何复制参数
@@ -378,6 +449,6 @@ model2.layers[1].set_weights(model1.layers[0].layers[0].get_weights())
 ```
 我自己这种复制方法把一个包含有sequential结构的model里面的layer都拆出来了，参数就直接复制到新的model对应的结构上
 
-
-### keras 
-
+### keras其他一些小问题
+#### train_on_batch收敛,GradientTape不收敛
+我们之前碰到了这样一个问题，用train_on_batch训练loss可以收敛，GradientTape方法训练loss不收敛或者效果远远不如train_on_batch的好。参考[ref1](https://github.com/tensorflow/tensorflow/issues/28901)、[ref2](https://stackoverflow.com/questions/56868981/training-logistic-regression-with-tf-gradienttape-cant-converge), 原因是model output的维度和ground truth的维度不一致
