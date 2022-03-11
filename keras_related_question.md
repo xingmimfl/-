@@ -375,7 +375,7 @@ keras.layers.BatchNormalization(trainable=False)
 ```
 class ExamModel(keras.Model):
     def __init__(self):
-        super(LandmarksModel, self).__init__()
+        super(ExamModel, self).__init__()
         self._preprocess_layer =  keras.layers.InputLayer(input_shape=(input_size, input_size, 1))
         self.layer1 = layer1(..., bn_trainable=True, name = "layer1")
         self.layer2 = layer2(..., bn_trainable=True, name = "layer2")
@@ -410,7 +410,7 @@ model.save_weights("model_example_frozen_params.h5")
 ```
 class ExamModelwithBranch(keras.Model):
     def __init__(self):
-        super(LandmarksModel, self).__init__()
+        super(ExamModelwithBranch, self).__init__()
         self._preprocess_layer =  keras.layers.InputLayer(input_shape=(input_size, input_size, 1))
         self.layer1 = layer1(..., bn_trainable=False, name = "layer1") #---设为False, 让bn参数不参加训练
         self.layer2 = layer2(..., bn_trainable=False, name = "layer2")
