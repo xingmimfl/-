@@ -6,7 +6,8 @@
 
 keras是一个极其灵活的框架，我在这里提到的仅仅是我在实践中碰到的问题和解决方法，不是唯一标准的做法。
 
-### keras.conv2D没有groups
+### keras tensor操作
+#### keras.conv2D没有groups
 keras=2.3.1之前没有这个参数。
 	
 ```python
@@ -14,7 +15,6 @@ TypeError: ('Keyword argument not understood:', 'groups')
 ```
 解决方法，升级keras版本，或者使用其他的卷积核操作。
 
-### keras tensor操作
 #### Keras动态reshape
 ```python
 class Reorg(keras.layers.Layer):
